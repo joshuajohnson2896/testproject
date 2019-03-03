@@ -1,0 +1,20 @@
+cloud:
+  google:
+    projectId: testproject
+    pubsub:
+      command-topic: command-topic
+spring:
+  cloud:
+    gcp:
+      config:
+        credentials:
+          location: file:cred/testproject-b7c5410a3542.json
+
+projectPaths:
+  models:
+    package: com.jjohnson.testproject.main.model
+    files: CommandMessage
+  schemas:
+    path: /src/main/resources/schemas/
+server:
+  port: 443

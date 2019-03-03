@@ -5,34 +5,76 @@ buildscript {    // Configuration for building
     }
     dependencies {
         classpath 'com.google.cloud.tools:appengine-gradle-plugin:1.+'    // Latest 1.x.x release
+        classpath "org.openapitools:openapi-generator-gradle-plugin:3.3.4"
     }
 }
 
 plugins {
+    id 'io.spring.dependency-management' version '1.0.6.RELEASE'
     id 'org.jetbrains.kotlin.jvm' version '1.3.21'
-}
-
-repositories {   // repositories for Jar's you access in your code
-    maven {
-        url 'https://oss.sonatype.org/content/repositories/snapshots' // SNAPSHOT repository (if needed)
-    }
-    mavenCentral()
-    jcenter()
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.3.21'
+    id 'io.gitlab.arturbosch.detekt' version '1.0.0-RC14'
 }
 
 apply plugin: 'war'                               // standard Web Archive plugin
+apply plugin: 'org.openapi.generator'
 apply plugin: 'com.google.cloud.tools.appengine'  // App Engine tasks
 
+//========================= Project Info ===============================================================================
+group   = "com.jjohnson"        // Generated output GroupId
+version = "1.0"                            // Version in generated output
+
+ext {
+    detektversion = '1.0.0-RC14'
+    openapiversion = '3.3.4'
+    springbootversion =  '2.1.3.RELEASE'
+    swaggerverion = '1.5.21'
+}
+
+//Override Spring Boot BOM Versions
+ext['kotlin.version'] = '1.3.21'
+dependencyManagement {
+    imports {
+        //mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    }
+}
+
 dependencies {
+
+    //Kotlin Libraries
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    
+
+    //Google Cloud Libraries
     compile 'com.google.appengine:appengine-api-1.0-sdk:+'  // Latest App Engine Api's
-    providedCompile 'javax.servlet:javax.servlet-api:3.1.0'
+    compile 'org.springframework.cloud:spring-cloud-gcp-starter-pubsub:1.1.0.RELEASE'
+    compile 'org.springframework.cloud:spring-cloud-gcp-starter-logging:1.1.0.RELEASE'
+    compile 'com.google.auth:google-auth-library-oauth2-http:0.13.0'
+    compile group: 'com.google.appengine', name: 'appengine-api-1.0-sdk', version: '1.9.71'
+    
+    //Avro 
+    compile 'org.apache.avro:avro:1.8.2'
+
+    //Arrow
+    compile 'io.arrow-kt:arrow-core:0.8.2'
+    
+    //providedCompile 'javax.servlet:javax.servlet-api:3.1.0'
+
+    // Spring Boot Dependencies
+    compile "org.springframework.boot:spring-boot-starter-web:$springbootversion"
+    compile "org.springframework.boot:spring-boot-starter-tomcat:$springbootversion"
+    compile "org.springframework.boot:spring-boot-devtools:$springbootversion"
 
     compile 'jstl:jstl:1.2'
 
+    //SLF4J
+    compile 'org.slf4j:jul-to-slf4j:1.7.25'
+
 // Add your dependencies here.
-//  compile 'com.google.cloud:google-cloud:+'   // Latest Cloud API's http://googlecloudplatform.github.io/google-cloud-java
+    compile 'com.google.cloud:google-cloud:+'   // Latest Cloud API's http://googlecloudplatform.github.io/google-cloud-java
+    //classpath 'com.google.cloud.tools:appengine-gradle-plugin:1.+'    // Latest 1.x.x release
+
+    //Swagger Annotation & OpenApi Dependencies
+    compile "io.swagger:swagger-annotations:$swaggerverion"
 
     testCompile 'junit:junit:4.12'
     testCompile 'com.google.truth:truth:0.33'
@@ -41,7 +83,14 @@ dependencies {
     testCompile 'com.google.appengine:appengine-testing:+'
     testCompile 'com.google.appengine:appengine-api-stubs:+'
     testCompile 'com.google.appengine:appengine-tools-sdk:+'
+
+    testCompile "org.springframework.boot:spring-boot-starter-test:$springbootversion"
+    
+    testCompile 'org.junit.jupiter:junit-jupiter-engine:5.4.0'
 }
+
+defaultTasks 'build'
+
 
 // Always run unit tests
 appengineDeploy.dependsOn test
@@ -68,5 +117,62 @@ test {
     }
 }
 
-group   = "com.example.appenginej8"        // Generated output GroupId
-version = "1.0-SNAPSHOT"       // Version in generated output
+//========================= Detekt =====================================================================================
+//tasks.withType((io.gitlab.arturbosch.detekt.Detekt) {
+//    shouldRunAfter test
+//}
+detekt {
+    toolVersion = detektversion
+    input = files("src/main/kotlin")
+    config = files("$projectDir/detekt.yml")
+    reports {
+        xml {
+            enabled = false
+        }
+    }
+}
+
+//========================= Swagger & OpenAPI ==========================================================================
+task openApiGenerateClean(group: 'OpenAPI Tools', type: Delete, description: 'Delete the directory that OpenAPI generator uses') {
+    delete 'src/main/generated'
+}
+tasks['openApiGenerate'].dependsOn openApiGenerateClean
+
+openApiGenerate {
+    generatorName = "spring"
+    outputDir = "$projectDir/src/main/generated".toString()
+    inputSpec = "$projectDir/src/main/resources/api/openapi.yaml".toString()
+    systemProperties = [
+            apis                   : '',
+            models                 : '',
+            supportingFiles        : 'ApiUtil.java',
+            hideGenerationTimestamp: 'true'
+    ]
+    configOptions = [
+            modelPackage : "com.jjohnson.testproject.main.openapi.model",
+            apiPackage   : "com.jjohnson.testproject.main.openapi.api",
+            sourceFolder : "",
+            useTags      : "true",
+            deleatePatter: "true",
+            interfaceOnly: "true"
+    ]
+}
+
+compileKotlin.mustRunAfter tasks.openApiGenerate
+sourceSets.main.java.srcDir openApiGenerate.outputDir
+
+//========================= Repository =================================================================================
+repositories {   // repositories for Jar's you access in your code
+    maven {
+        url 'https://oss.sonatype.org/content/repositories/snapshots' // SNAPSHOT repository (if needed)
+    }
+    mavenCentral()
+    jcenter()
+}
+
+//========================= Kotlin Compile Options ======================================================
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}

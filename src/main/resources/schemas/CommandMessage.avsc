@@ -1,0 +1,1 @@
+{"type":"record","name":"CommandMessage","namespace":"com.jjohnson.testproject.main.model","fields":[{"name":"command","type":"string"}]}

@@ -60,3 +60,10 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
+
+# OpenAPI
+/src/main/generated/.openapi-generator-ignore
+/src/main/generated/.openapi-generator/VERSION
+
+# Google Api Json
+/src/main/resources/cred/*

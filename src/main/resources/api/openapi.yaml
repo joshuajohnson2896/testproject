@@ -1,0 +1,45 @@
+openapi: 3.0.0
+info:
+  title: Google Home PC Controller
+  description: This API is to be used to send simple commands to any given PC that subscibes to the service, when a command is recieved by the system the command is carried out.
+  contact:
+    email: joshuajohnson2896@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/joshuajohnson2896/Google_Home_PC_Controller/1.0.0
+  description: SwaggerHub API Auto Mocking
+tags:
+- name: Main
+  description: Main users that will be calling this API Service
+paths:
+  /command/issue:
+    post:
+      tags:
+      - Main
+      summary: Issue Command to PC
+      description: Issues Command to PC System
+      operationId: commandIssue
+      requestBody:
+        description: Command to Issue
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandItem'
+      responses:
+        201:
+          description: Command Successfully Issued
+        400:
+          description: invalid input, object invalid
+components:
+  schemas:
+    CommandItem:
+      required:
+      - command
+      type: object
+      properties:
+        command:
+          type: string
+          example: Turn Off
